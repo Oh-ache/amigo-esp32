@@ -46,6 +46,9 @@ bool WiFiManager::connect(const char* ssid, const char* password) {
   currentSSID = ssid;
   currentPassword = password;
 
+  // 将WiFi账号密码保存到Flash存储
+  StorageComm.saveWiFiCredentials(currentSSID, currentPassword);
+
   // 开始连接
   WiFi.begin(ssid, password);
 
@@ -58,6 +61,22 @@ bool WiFiManager::connect(const char* ssid, const char* password) {
   } else {
     Serial.println("WiFi连接失败");
     isWiFiConnected = false;
+    return false;
+  }
+}
+
+// 从Flash存储加载WiFi账号密码并连接
+bool WiFiManager::connectFromStorage() {
+  Serial.println("正在从Flash存储加载WiFi账号密码");
+
+  String ssid;
+  String password;
+
+  if (StorageComm.loadWiFiCredentials(ssid, password)) {
+    Serial.printf("从Flash存储加载到WiFi账号密码: SSID=%s, Password=%s\n", ssid.c_str(), password.c_str());
+    return connect(ssid.c_str(), password.c_str());
+  } else {
+    Serial.println("Flash存储中未找到WiFi账号密码");
     return false;
   }
 }

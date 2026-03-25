@@ -4,6 +4,7 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include "../storage/StorageManager.h"
 
 class WiFiManager {
 public:
@@ -34,6 +35,9 @@ public:
 
   // 等待WiFi连接完成（可设置超时时间）
   bool waitForConnection(int timeout = 30000);
+
+  // 从Flash存储加载WiFi账号密码并连接
+  bool connectFromStorage();
 
 private:
   String currentSSID;

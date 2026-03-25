@@ -2,6 +2,7 @@
 #include "ble/BLECommunication.h"
 #include "wifi/WiFiManager.h"
 #include "web/WebServer.h"
+#include "storage/StorageManager.h"
 
 void setup() {
   // 初始化串口（对于ESP32-S3，我们需要使用Serial0或Serial1）
@@ -15,6 +16,11 @@ void setup() {
   }
 
   Serial.println("ESP32 S3 设备初始化");
+
+  // 初始化存储管理
+  if (!StorageComm.init()) {
+    Serial.println("存储管理初始化失败");
+  }
 
   // 根据WiFi连接方式进行初始化
 #ifdef WIFI_CONNECT_MODE

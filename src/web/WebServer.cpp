@@ -1,5 +1,6 @@
 
 #include "WebServer.h"
+#include "../wifi/WiFiManager.h"
 
 // 全局实例
 MyWebServer WebComm;
@@ -384,6 +385,9 @@ void MyWebServer::handleDisplayImage(WiFiClient& client, const String& request) 
             return;
           }
 
+          // 保存图片地址到Flash存储
+          StorageComm.saveImageUrl(imageUrl);
+
           // 显示图片
           if (displayImageOnEPD(pixelData, width, height)) {
             sendResponse(client, 200, "application/json", "{\"success\": true, \"message\": \"图片显示成功\"}");
@@ -493,9 +497,9 @@ String MyWebServer::getExternalIP() {
   return "";
 }
 
-// 处理IP查询请求
-void MyWebServer::handleGetIP(WiFiClient& client) {
-  Serial.println("收到IP查询请求");
+// 处理WiFi信息请求
+void MyWebServer::handleGetWiFiInfo(WiFiClient& client) {
+  Serial.println("收到WiFi信息请求");
 
   // 获取内网IP
   String localIP = WiFi.localIP().toString();
@@ -503,8 +507,14 @@ void MyWebServer::handleGetIP(WiFiClient& client) {
   // 获取外网IP
   String externalIP = getExternalIP();
 
+  // 获取信号强度
+  int rssi = WiFi.RSSI();
+
+  // 获取MAC地址
+  String macAddress = WiFi.macAddress();
+
   // 构建JSON响应
-  String json = "{\"local_ip\": \"" + localIP + "\", \"external_ip\": \"" + externalIP + "\"}";
+  String json = "{\"local_ip\": \"" + localIP + "\", \"external_ip\": \"" + externalIP + "\", \"rssi\": " + String(rssi) + ", \"mac_address\": \"" + macAddress + "\"}";
 
   sendResponse(client, 200, "application/json", json);
 }
@@ -575,6 +585,80 @@ void MyWebServer::handleResourceInfo(WiFiClient& client) {
 
   String resourceInfo = getResourceInfo();
   sendResponse(client, 200, "application/json", resourceInfo);
+}
+
+// 获取设备状态信息（JSON格式）
+String MyWebServer::getStatusInfo() {
+  Serial.println("正在获取设备状态信息");
+
+  // 1. BLE蓝牙状态 - 暂时注释掉，因为无法包含BLE头文件
+  // bool bleConnected = BLEComm.isConnected();
+
+  // 2. WiFi状态
+  bool wifiConnected = WiFiComm.isConnected();
+
+  // 3. Web服务器状态
+  bool webRunning = isRunning();
+
+  // 4. 墨水屏状态（检查busy pin）
+  bool epdBusy = false;
+
+  // 检查墨水屏是否在工作（通过busy引脚判断）
+  // 注意：需要先初始化GPIO引脚，我们可以在第一次调用时初始化
+  static bool pinInitialized = false;
+  if (!pinInitialized) {
+    pinMode(EPD_BUSY_PIN, INPUT);
+    pinInitialized = true;
+  }
+
+  // 读取busy引脚状态（HIGH表示繁忙）
+  epdBusy = digitalRead(EPD_BUSY_PIN) == HIGH;
+
+  // 5. 运行时间（秒）
+  unsigned long uptime = millis() / 1000;
+
+  // 6. 芯片温度（摄氏度）
+  float chipTemperature = temperatureRead();
+
+  // 7. 重启次数（通过ESP32的重启原因计数）
+  // 使用RTC_DATA_ATTR变量保存重启次数，因为这个变量会在重启后保留
+  static RTC_DATA_ATTR int restartCount = 0;
+  // 每次重启都会增加重启次数
+  static bool firstRun = true;
+  if (firstRun) {
+    restartCount++;
+    firstRun = false;
+  }
+
+  // 构建JSON响应
+  String json = "{";
+  json += "\"ble\": {\"connected\": false},"; // 暂时硬编码为false
+  json += "\"wifi\": {\"connected\": " + String(wifiConnected ? "true" : "false") + "},";
+  json += "\"web_server\": {\"running\": " + String(webRunning ? "true" : "false") + "},";
+  json += "\"e_paper\": {\"busy\": " + String(epdBusy ? "true" : "false") + "},";
+  json += "\"uptime\": " + String(uptime) + ",";
+  json += "\"chip_temperature\": " + String(chipTemperature, 2) + ",";
+  json += "\"restart_count\": " + String(restartCount);
+  json += "}";
+
+  Serial.printf("设备状态信息: %s\n", json.c_str());
+  return json;
+}
+
+// 处理存储信息请求
+void MyWebServer::handleGetStorageInfo(WiFiClient& client) {
+  Serial.println("收到存储信息请求");
+
+  String storageInfo = StorageComm.getStorageInfo();
+  sendResponse(client, 200, "application/json", storageInfo);
+}
+
+// 处理状态查询请求
+void MyWebServer::handleStatus(WiFiClient& client) {
+  Serial.println("收到状态查询请求");
+
+  String statusInfo = getStatusInfo();
+  sendResponse(client, 200, "application/json", statusInfo);
 }
 
 // 处理客户端请求
@@ -687,13 +771,21 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     else if (path == "/heartbeat" && method == "GET") {
       handleHeartbeat(client);
     }
-    // 处理IP查询路径（GET方法）
-    else if (path == "/ip" && method == "GET") {
-      handleGetIP(client);
+    // 处理WiFi信息路径（GET方法）
+    else if (path == "/wifi" && method == "GET") {
+      handleGetWiFiInfo(client);
     }
     // 处理资源信息路径（GET方法）
     else if (path == "/resource" && method == "GET") {
       handleResourceInfo(client);
+    }
+    // 处理状态查询路径（GET方法）
+    else if (path == "/status" && method == "GET") {
+      handleStatus(client);
+    }
+    // 处理存储信息路径（GET方法）
+    else if (path == "/storage" && method == "GET") {
+      handleGetStorageInfo(client);
     }
     // 处理未找到的路径
     else {

@@ -59,14 +59,23 @@ private:
   // 处理心跳检测请求
   void handleHeartbeat(WiFiClient& client);
 
-  // 处理IP查询请求
-  void handleGetIP(WiFiClient& client);
+  // 处理WiFi信息请求
+  void handleGetWiFiInfo(WiFiClient& client);
 
   // 处理资源信息请求
   void handleResourceInfo(WiFiClient& client);
 
   // 获取资源信息（JSON格式）
   String getResourceInfo();
+
+  // 处理状态查询请求
+  void handleStatus(WiFiClient& client);
+
+  // 获取设备状态信息（JSON格式）
+  String getStatusInfo();
+
+  // 处理存储信息请求
+  void handleGetStorageInfo(WiFiClient& client);
 
   // 从URL下载图片
   std::vector<uint8_t> downloadImage(const String& url);
