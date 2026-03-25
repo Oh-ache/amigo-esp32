@@ -509,6 +509,74 @@ void MyWebServer::handleGetIP(WiFiClient& client) {
   sendResponse(client, 200, "application/json", json);
 }
 
+// 获取设备资源信息（JSON格式）
+String MyWebServer::getResourceInfo() {
+  Serial.println("正在获取设备资源信息");
+
+  // 1. 内存信息
+  size_t freeHeap = ESP.getFreeHeap();
+  size_t totalHeap = ESP.getHeapSize();
+  size_t usedHeap = totalHeap - freeHeap;
+  float heapUsage = (float)usedHeap / totalHeap * 100;
+
+  // 2. PSRAM信息（如果有PSRAM）
+  size_t freePsram = 0;
+  size_t totalPsram = 0;
+  size_t usedPsram = 0;
+  float psramUsage = 0;
+  #ifdef CONFIG_SPIRAM_SUPPORT
+    freePsram = ESP.getFreePsram();
+    totalPsram = ESP.getPsramSize();
+    usedPsram = totalPsram - freePsram;
+    if (totalPsram > 0) {
+      psramUsage = (float)usedPsram / totalPsram * 100;
+    }
+  #endif
+
+  // 3. 闪存信息
+  size_t flashSize = ESP.getFlashChipSize();
+  size_t flashSpeed = ESP.getFlashChipSpeed();
+
+  // 4. CPU信息
+  uint32_t cpuFreq = ESP.getCpuFreqMHz();
+
+  // 构建JSON响应
+  String json = "{";
+  json += "\"memory\": {";
+  json += "\"heap\": {";
+  json += "\"total\": " + String(totalHeap) + ", ";
+  json += "\"used\": " + String(usedHeap) + ", ";
+  json += "\"free\": " + String(freeHeap) + ", ";
+  json += "\"usage\": " + String(heapUsage, 2);
+  json += "}, ";
+  json += "\"psram\": {";
+  json += "\"total\": " + String(totalPsram) + ", ";
+  json += "\"used\": " + String(usedPsram) + ", ";
+  json += "\"free\": " + String(freePsram) + ", ";
+  json += "\"usage\": " + String(psramUsage, 2);
+  json += "}";
+  json += "}, ";
+  json += "\"flash\": {";
+  json += "\"size\": " + String(flashSize) + ", ";
+  json += "\"speed\": " + String(flashSpeed);
+  json += "}, ";
+  json += "\"cpu\": {";
+  json += "\"frequency\": " + String(cpuFreq);
+  json += "}";
+  json += "}";
+
+  Serial.printf("资源信息: %s\n", json.c_str());
+  return json;
+}
+
+// 处理资源信息请求
+void MyWebServer::handleResourceInfo(WiFiClient& client) {
+  Serial.println("收到资源信息请求");
+
+  String resourceInfo = getResourceInfo();
+  sendResponse(client, 200, "application/json", resourceInfo);
+}
+
 // 处理客户端请求
 void MyWebServer::handleClient() {
   if (!isServerRunning || !server) {
@@ -622,6 +690,10 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     // 处理IP查询路径（GET方法）
     else if (path == "/ip" && method == "GET") {
       handleGetIP(client);
+    }
+    // 处理资源信息路径（GET方法）
+    else if (path == "/resource" && method == "GET") {
+      handleResourceInfo(client);
     }
     // 处理未找到的路径
     else {

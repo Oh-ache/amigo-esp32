@@ -62,6 +62,12 @@ private:
   // 处理IP查询请求
   void handleGetIP(WiFiClient& client);
 
+  // 处理资源信息请求
+  void handleResourceInfo(WiFiClient& client);
+
+  // 获取资源信息（JSON格式）
+  String getResourceInfo();
+
   // 从URL下载图片
   std::vector<uint8_t> downloadImage(const String& url);
 
