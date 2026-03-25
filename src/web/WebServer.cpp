@@ -263,6 +263,18 @@ bool MyWebServer::displayImageOnEPD(const std::vector<uint8_t>& pixelData, int w
   EPD_3IN7G_Init();
   EPD_3IN7G_Clear(EPD_3IN7G_WHITE);
 
+  // 创建图像缓冲区
+  std::vector<uint8_t> imageBuffer;
+  int bufferSize = ((EPD_3IN7G_WIDTH % 4 == 0) ? (EPD_3IN7G_WIDTH / 4) : (EPD_3IN7G_WIDTH / 4 + 1)) * EPD_3IN7G_HEIGHT;
+  imageBuffer.resize(bufferSize, EPD_3IN7G_WHITE);
+
+  // 设置绘图区域
+  Paint_NewImage(imageBuffer.data(), EPD_3IN7G_WIDTH, EPD_3IN7G_HEIGHT, 0, EPD_3IN7G_WHITE);
+  Paint_Clear(EPD_3IN7G_WHITE);
+
+  // 重要：设置缩放比例为4，因为EPD_3IN7G是4灰度级显示
+  Paint_SetScale(4);
+
   // 检查图片尺寸是否匹配屏幕
   if (width != EPD_3IN7G_WIDTH || height != EPD_3IN7G_HEIGHT) {
     Serial.println("图片尺寸不匹配，需要调整");
@@ -288,10 +300,6 @@ bool MyWebServer::displayImageOnEPD(const std::vector<uint8_t>& pixelData, int w
       }
     }
 
-    // 显示调整后的图片
-    Paint_NewImage((UBYTE*)resizedData.data(), newWidth, newHeight, 0, EPD_3IN7G_WHITE);
-    Paint_Clear(EPD_3IN7G_WHITE);
-
     // 将灰度数据转换为墨水屏格式
     for (int y = 0; y < newHeight; y++) {
       for (int x = 0; x < newWidth; x++) {
@@ -305,9 +313,6 @@ bool MyWebServer::displayImageOnEPD(const std::vector<uint8_t>& pixelData, int w
     }
   } else {
     // 图片尺寸与屏幕匹配
-    Paint_NewImage((UBYTE*)pixelData.data(), width, height, 0, EPD_3IN7G_WHITE);
-    Paint_Clear(EPD_3IN7G_WHITE);
-
     // 将灰度数据转换为墨水屏格式
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
