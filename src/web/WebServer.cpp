@@ -438,6 +438,77 @@ void MyWebServer::sendNotFound(WiFiClient& client) {
   sendResponse(client, 404, "text/html", html);
 }
 
+// 处理心跳检测请求
+void MyWebServer::handleHeartbeat(WiFiClient& client) {
+  Serial.println("收到心跳检测请求");
+  sendResponse(client, 200, "text/plain", "ok");
+}
+
+// 获取外网IP地址
+String MyWebServer::getExternalIP() {
+  Serial.println("正在获取外网IP");
+
+  WiFiClient client;
+
+  // 使用 ipify.org 服务获取外网IP（免费且无需API密钥）
+  if (!client.connect("api.ipify.org", 80)) {
+    Serial.println("无法连接到IP查询服务器");
+    return "";
+  }
+
+  // 发送HTTP请求
+  client.print(String("GET /?format=text HTTP/1.1\r\n"));
+  client.print(String("Host: api.ipify.org\r\n"));
+  client.print(String("User-Agent: ESP32\r\n"));
+  client.print(String("Connection: close\r\n\r\n"));
+
+  // 等待响应
+  unsigned long timeout = millis();
+  while (client.available() == 0) {
+    if (millis() - timeout > 10000) {
+      Serial.println("获取外网IP超时");
+      client.stop();
+      return "";
+    }
+  }
+
+  // 读取响应
+  String response = "";
+  while (client.available()) {
+    response += client.readStringUntil('\n');
+  }
+
+  client.stop();
+
+  // 解析响应，获取IP地址
+  int bodyIndex = response.indexOf("\r\n\r\n");
+  if (bodyIndex != -1) {
+    String ip = response.substring(bodyIndex + 4);
+    ip.trim(); // 去除可能的空白字符
+    Serial.printf("外网IP: %s\n", ip.c_str());
+    return ip;
+  }
+
+  Serial.println("无法解析IP响应");
+  return "";
+}
+
+// 处理IP查询请求
+void MyWebServer::handleGetIP(WiFiClient& client) {
+  Serial.println("收到IP查询请求");
+
+  // 获取内网IP
+  String localIP = WiFi.localIP().toString();
+
+  // 获取外网IP
+  String externalIP = getExternalIP();
+
+  // 构建JSON响应
+  String json = "{\"local_ip\": \"" + localIP + "\", \"external_ip\": \"" + externalIP + "\"}";
+
+  sendResponse(client, 200, "application/json", json);
+}
+
 // 处理客户端请求
 void MyWebServer::handleClient() {
   if (!isServerRunning || !server) {
@@ -543,6 +614,14 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     // 处理图片显示路径（POST方法）
     else if (path == "/display-image" && method == "POST") {
       handleDisplayImage(client, request);
+    }
+    // 处理心跳检测路径（GET方法）
+    else if (path == "/heartbeat" && method == "GET") {
+      handleHeartbeat(client);
+    }
+    // 处理IP查询路径（GET方法）
+    else if (path == "/ip" && method == "GET") {
+      handleGetIP(client);
     }
     // 处理未找到的路径
     else {

@@ -56,6 +56,12 @@ private:
   // 处理图片显示请求
   void handleDisplayImage(WiFiClient& client, const String& request);
 
+  // 处理心跳检测请求
+  void handleHeartbeat(WiFiClient& client);
+
+  // 处理IP查询请求
+  void handleGetIP(WiFiClient& client);
+
   // 从URL下载图片
   std::vector<uint8_t> downloadImage(const String& url);
 
@@ -64,6 +70,9 @@ private:
 
   // 在墨水屏上显示图片
   bool displayImageOnEPD(const std::vector<uint8_t>& pixelData, int width, int height);
+
+  // 获取外网IP地址
+  String getExternalIP();
 };
 
 extern MyWebServer WebComm;
