@@ -1,8 +1,8 @@
 
 #include <Arduino.h>
-#include "BLECommunication.h"
-#include "WiFiManager.h"
-#include "WebServer.h"
+#include "ble/BLECommunication.h"
+#include "wifi/WiFiManager.h"
+#include "web/WebServer.h"
 
 void setup() {
   // 初始化串口（对于ESP32-S3，我们需要使用Serial0或Serial1）
