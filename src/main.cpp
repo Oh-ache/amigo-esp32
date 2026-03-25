@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "ble/BLECommunication.h"
+#include "ble/BLEControl.h"
 #include "wifi/WiFiManager.h"
 #include "web/WebServer.h"
 #include "storage/StorageManager.h"
@@ -30,11 +31,12 @@ void setup() {
       Serial.println("初始化模式1：通过BLE蓝牙配网");
 
       // 初始化BLE蓝牙
-      if (BLEComm.init()) {
+      bleControlInit();
+      if (bleControlIsInitialized()) {
         Serial.println("BLE蓝牙初始化成功");
 
         // 开启BLE蓝牙
-        BLEComm.start();
+        bleControlStart();
 
         // 设置蓝牙名称（可选，默认已设置为ESP32-BLE）
         // BLEComm.setDeviceName("ESP32-BLE");
@@ -85,9 +87,10 @@ void setup() {
       // 默认为模式1
 
       // 初始化BLE蓝牙
-      if (BLEComm.init()) {
+      bleControlInit();
+      if (bleControlIsInitialized()) {
         Serial.println("BLE蓝牙初始化成功");
-        BLEComm.start();
+        bleControlStart();
       } else {
         Serial.println("BLE蓝牙初始化失败");
       }
@@ -98,9 +101,10 @@ void setup() {
   Serial.println("未配置WiFi连接模式，默认使用模式1（BLE配网）");
 
   // 初始化BLE蓝牙
-  if (BLEComm.init()) {
+  bleControlInit();
+  if (bleControlIsInitialized()) {
     Serial.println("BLE蓝牙初始化成功");
-    BLEComm.start();
+    bleControlStart();
   } else {
     Serial.println("BLE蓝牙初始化失败");
   }
