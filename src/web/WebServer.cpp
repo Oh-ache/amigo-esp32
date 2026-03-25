@@ -752,12 +752,23 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
 
     // 处理根路径
     if (path == "/") {
-      String html = "<html><body>";
+      String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>";
       html += "<h1>ESP32 S3 Web服务</h1>";
-      html += "<p>访问 /device-id 以获取设备唯一ID</p>";
-      html += "<p>使用 POST /display-image 接口显示图片</p>";
+      html += "<h2>可用接口</h2>";
+      html += "<ul>";
+      html += "<li><strong>GET</strong> / - 显示此页面</li>";
+      html += "<li><strong>GET</strong> /device-id - 获取设备唯一ID</li>";
+      html += "<li><strong>POST</strong> /display-image - 显示图片（需发送JSON: {\"url\": \"图片URL\"}）</li>";
+      html += "<li><strong>GET</strong> /heartbeat - 心跳检测</li>";
+      html += "<li><strong>GET</strong> /wifi - 获取WiFi信息</li>";
+      html += "<li><strong>GET</strong> /resource - 获取设备资源信息</li>";
+      html += "<li><strong>GET</strong> /status - 获取设备状态信息</li>";
+      html += "<li><strong>GET</strong> /storage - 获取存储信息</li>";
+      html += "<li><strong>GET</strong> /ble/start - 启动BLE蓝牙</li>";
+      html += "<li><strong>GET</strong> /ble/stop - 停止BLE蓝牙</li>";
+      html += "</ul>";
       html += "</body></html>";
-      sendResponse(client, 200, "text/html", html);
+      sendResponse(client, 200, "text/html; charset=utf-8", html);
     }
     // 处理设备ID路径
     else if (path == "/device-id") {
