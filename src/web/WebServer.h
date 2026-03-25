@@ -88,6 +88,12 @@ private:
 
   // 获取外网IP地址
   String getExternalIP();
+
+  // 处理BLE蓝牙启动请求
+  void handleBLEStart(WiFiClient& client);
+
+  // 处理BLE蓝牙停止请求
+  void handleBLEStop(WiFiClient& client);
 };
 
 extern MyWebServer WebComm;

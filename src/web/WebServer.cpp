@@ -1,6 +1,8 @@
 
 #include "WebServer.h"
 #include "../wifi/WiFiManager.h"
+#include "../ble/BLEControl.h"
+#include "../storage/StorageManager.h"
 
 // 全局实例
 MyWebServer WebComm;
@@ -632,7 +634,7 @@ String MyWebServer::getStatusInfo() {
 
   // 构建JSON响应
   String json = "{";
-  json += "\"ble\": {\"connected\": false},"; // 暂时硬编码为false
+  json += "\"ble\": {\"connected\": " + String(bleControlIsConnected() ? "true" : "false") + ", \"initialized\": " + String(bleControlIsInitialized() ? "true" : "false") + ", \"running\": " + String(bleControlIsRunning() ? "true" : "false") + "},";
   json += "\"wifi\": {\"connected\": " + String(wifiConnected ? "true" : "false") + "},";
   json += "\"web_server\": {\"running\": " + String(webRunning ? "true" : "false") + "},";
   json += "\"e_paper\": {\"busy\": " + String(epdBusy ? "true" : "false") + "},";
@@ -787,6 +789,14 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     else if (path == "/storage" && method == "GET") {
       handleGetStorageInfo(client);
     }
+    // 处理BLE启动路径（GET方法）
+    else if (path == "/ble/start" && method == "GET") {
+      handleBLEStart(client);
+    }
+    // 处理BLE停止路径（GET方法）
+    else if (path == "/ble/stop" && method == "GET") {
+      handleBLEStop(client);
+    }
     // 处理未找到的路径
     else {
       Serial.printf("未找到路径: %s\n", path.c_str());
@@ -796,5 +806,29 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     // 如果无法解析请求，发送400错误
     sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"无效的请求格式\"}");
   }
+}
+
+// 处理BLE蓝牙启动请求
+void MyWebServer::handleBLEStart(WiFiClient& client) {
+  Serial.println("收到BLE蓝牙启动请求");
+  
+  // 启动BLE蓝牙
+  bleControlStart();
+  
+  // 返回成功响应
+  String json = "{\"success\": true, \"message\": \"BLE蓝牙已启动\"}";
+  sendResponse(client, 200, "application/json", json);
+}
+
+// 处理BLE蓝牙停止请求
+void MyWebServer::handleBLEStop(WiFiClient& client) {
+  Serial.println("收到BLE蓝牙停止请求");
+  
+  // 停止BLE蓝牙
+  bleControlStop();
+  
+  // 返回成功响应
+  String json = "{\"success\": true, \"message\": \"BLE蓝牙已停止\"}";
+  sendResponse(client, 200, "application/json", json);
 }
 
