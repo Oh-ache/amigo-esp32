@@ -1,16 +1,18 @@
 
-#ifndef WEB_SERVER_H
-#define WEB_SERVER_H
+#ifndef MY_WEB_SERVER_H
+#define MY_WEB_SERVER_H
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WebServer.h>
+#include <vector>
+#include "../elnk/EPD_3in7g.h"
+#include "../elnk/GUI_Paint.h"
 
-class WebServer {
+class MyWebServer {
 public:
   // 构造函数和析构函数
-  WebServer();
-  ~WebServer();
+  MyWebServer();
+  ~MyWebServer();
 
   // 初始化Web服务器
   bool init(int port = 80);
@@ -43,16 +45,28 @@ private:
   String getDeviceId();
 
   // 处理HTTP请求
-  void handleRequest(WiFiClient& client);
+  void handleRequest(WiFiClient& client, const String& request);
 
   // 发送HTTP响应
   void sendResponse(WiFiClient& client, int code, const String& contentType, const String& content);
 
   // 发送404错误响应
   void sendNotFound(WiFiClient& client);
+
+  // 处理图片显示请求
+  void handleDisplayImage(WiFiClient& client, const String& request);
+
+  // 从URL下载图片
+  std::vector<uint8_t> downloadImage(const String& url);
+
+  // 解码BMP图片
+  std::vector<uint8_t> decodeBMP(const std::vector<uint8_t>& bmpData, int& width, int& height);
+
+  // 在墨水屏上显示图片
+  bool displayImageOnEPD(const std::vector<uint8_t>& pixelData, int width, int height);
 };
 
-extern WebServer WebComm;
+extern MyWebServer WebComm;
 
-#endif // WEB_SERVER_H
+#endif // MY_WEB_SERVER_H
 
