@@ -740,18 +740,25 @@ void MyWebServer::handleClient() {
 
 // 处理HTTP请求
 void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
-  // 解析请求路径和HTTP方法
-  int firstSpace = request.indexOf(' ');
-  int secondSpace = request.indexOf(' ', firstSpace + 1);
+    // 解析请求路径和HTTP方法
+    int firstSpace = request.indexOf(' ');
+    int secondSpace = request.indexOf(' ', firstSpace + 1);
 
-  if (firstSpace != -1 && secondSpace != -1) {
-    String method = request.substring(0, firstSpace);
-    String path = request.substring(firstSpace + 1, secondSpace);
+    if (firstSpace != -1 && secondSpace != -1) {
+      String method = request.substring(0, firstSpace);
+      String fullPath = request.substring(firstSpace + 1, secondSpace);
+      
+      // 提取路径（去掉查询参数）
+      String path = fullPath;
+      int queryIndex = path.indexOf('?');
+      if (queryIndex != -1) {
+        path = path.substring(0, queryIndex);
+      }
 
-    Serial.printf("方法: %s, 路径: %s\n", method.c_str(), path.c_str());
+      Serial.printf("方法: %s, 路径: %s\n", method.c_str(), path.c_str());
 
-    // 处理根路径
-    if (path == "/") {
+      // 处理根路径
+      if (path == "/") {
       String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>";
       html += "<h1>ESP32 S3 Web服务</h1>";
       html += "<h2>可用接口</h2>";
@@ -769,6 +776,8 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
       html += "<li><strong>GET</strong> /storage - 获取存储信息</li>";
       html += "<li><strong>GET</strong> /ble/start - 启动BLE蓝牙</li>";
       html += "<li><strong>GET</strong> /ble/stop - 停止BLE蓝牙</li>";
+      html += "<li><strong>GET</strong> /update_wifi?credentials=账号,密码 - 更新WiFi凭证并重新连接</li>";
+      html += "<li><strong>GET</strong> /reboot - 重启设备</li>";
       html += "</ul>";
       html += "</body></html>";
       sendResponse(client, 200, "text/html; charset=utf-8", html);
@@ -822,6 +831,14 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     // 处理BLE停止路径（GET方法）
     else if (path == "/ble/stop" && method == "GET") {
       handleBLEStop(client);
+    }
+    // 处理更新WiFi凭证路径（GET方法）
+    else if (path == "/update_wifi" && method == "GET") {
+      handleUpdateWiFi(client, request);
+    }
+    // 处理设备重启路径（GET方法）
+    else if (path == "/reboot" && method == "GET") {
+      handleReboot(client);
     }
     // 处理未找到的路径
     else {
@@ -990,5 +1007,91 @@ void MyWebServer::handleBLEStop(WiFiClient& client) {
   // 返回成功响应
   String json = "{\"success\": true, \"message\": \"BLE蓝牙已停止\"}";
   sendResponse(client, 200, "application/json", json);
+}
+
+// 处理更新WiFi凭证请求
+void MyWebServer::handleUpdateWiFi(WiFiClient& client, const String& request) {
+  Serial.println("收到更新WiFi凭证请求");
+
+  // 解析URL参数
+  int queryStart = request.indexOf('?');
+  if (queryStart == -1) {
+    sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"缺少credentials参数\"}");
+    return;
+  }
+
+  String query = request.substring(queryStart + 1);
+  int credentialsIndex = query.indexOf("credentials=");
+  if (credentialsIndex == -1) {
+    sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"缺少credentials参数\"}");
+    return;
+  }
+
+  String credentials = query.substring(credentialsIndex + 12);
+  // URL解码
+  credentials.replace("%2C", ",");
+  credentials.replace("%20", " ");
+
+  // 解析账号和密码
+  int commaIndex = credentials.indexOf(',');
+  if (commaIndex == -1) {
+    sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"credentials格式错误，应为：账号,密码\"}");
+    return;
+  }
+
+  String ssid = credentials.substring(0, commaIndex);
+  String password = credentials.substring(commaIndex + 1);
+
+  ssid.trim();
+  password.trim();
+
+  if (ssid.length() == 0) {
+    sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"WiFi账号不能为空\"}");
+    return;
+  }
+
+  Serial.printf("新WiFi凭证 - SSID: %s, Password: %s\n", ssid.c_str(), password.c_str());
+
+  // 保存WiFi凭证到存储
+  if (!StorageComm.saveWiFiCredentials(ssid, password)) {
+    sendResponse(client, 500, "application/json", "{\"success\": false, \"message\": \"保存WiFi凭证失败\"}");
+    return;
+  }
+
+  // 发送成功响应（先发送响应，再重新连接WiFi）
+  String successResponse = "{\"success\": true, \"message\": \"WiFi凭证已保存，正在重新连接WiFi...\"}";
+  sendResponse(client, 200, "application/json", successResponse);
+
+  // 确保响应发送完成
+  client.flush();
+  delay(100);
+
+  // 重新连接WiFi
+  Serial.println("正在重新连接WiFi...");
+  WiFiComm.disconnect();
+  delay(1000);
+
+  if (WiFiComm.connect(ssid.c_str(), password.c_str())) {
+    Serial.printf("WiFi重新连接成功，IP地址: %s\n", WiFiComm.getIPAddress().c_str());
+  } else {
+    Serial.println("WiFi重新连接失败");
+  }
+}
+
+// 处理设备重启请求
+void MyWebServer::handleReboot(WiFiClient& client) {
+  Serial.println("收到设备重启请求");
+
+  // 发送成功响应
+  String json = "{\"success\": true, \"message\": \"设备即将重启...\"}";
+  sendResponse(client, 200, "application/json", json);
+
+  // 确保响应发送完成
+  client.flush();
+  delay(500);
+
+  // 执行设备重启
+  Serial.println("正在重启设备...");
+  ESP.restart();
 }
 

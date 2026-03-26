@@ -103,6 +103,12 @@ private:
 
   // 处理更新BASE_HOST请求
   void handleUpdateBaseHost(WiFiClient& client, const String& request);
+
+  // 处理更新WiFi凭证请求
+  void handleUpdateWiFi(WiFiClient& client, const String& request);
+
+  // 处理设备重启请求
+  void handleReboot(WiFiClient& client);
 };
 
 extern MyWebServer WebComm;
