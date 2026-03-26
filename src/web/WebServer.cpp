@@ -760,6 +760,7 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
       html += "<li><strong>GET</strong> /device-id - 获取设备唯一ID</li>";
       html += "<li><strong>POST</strong> /display-image - 显示图片（需发送JSON: {\"url\": \"图片URL\"}）</li>";
       html += "<li><strong>POST</strong> /update-image-url - 更新图片地址（需发送JSON: {\"image_url\": \"图片URL\"}）</li>";
+      html += "<li><strong>GET</strong> /refresh-image - 根据存储的image_url刷新图片显示</li>";
       html += "<li><strong>GET</strong> /heartbeat - 心跳检测</li>";
       html += "<li><strong>GET</strong> /wifi - 获取WiFi信息</li>";
       html += "<li><strong>GET</strong> /resource - 获取设备资源信息</li>";
@@ -784,6 +785,10 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     // 处理更新图片地址路径（POST方法）
     else if (path == "/update-image-url" && method == "POST") {
       handleUpdateImageUrl(client, request);
+    }
+    // 处理刷新图片路径（GET方法）
+    else if (path == "/refresh-image" && method == "GET") {
+      handleRefreshImage(client);
     }
     // 处理心跳检测路径（GET方法）
     else if (path == "/heartbeat" && method == "GET") {
@@ -883,6 +888,42 @@ void MyWebServer::handleUpdateImageUrl(WiFiClient& client, const String& request
   }
 
   sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"无法解析请求\"}");
+}
+
+// 处理刷新图片显示请求（根据存储的image_url）
+void MyWebServer::handleRefreshImage(WiFiClient& client) {
+  Serial.println("收到刷新图片显示请求");
+
+  // 从存储中加载图片地址
+  String imageUrl;
+  if (!StorageComm.loadImageUrl(imageUrl)) {
+    sendResponse(client, 404, "application/json", "{\"success\": false, \"message\": \"未找到存储的图片地址\"}");
+    return;
+  }
+
+  Serial.printf("从存储加载的图片URL: %s\n", imageUrl.c_str());
+
+  // 下载图片
+  std::vector<uint8_t> bmpData = downloadImage(imageUrl);
+  if (bmpData.empty()) {
+    sendResponse(client, 500, "application/json", "{\"success\": false, \"message\": \"无法下载图片\"}");
+    return;
+  }
+
+  // 解码图片
+  int width, height;
+  std::vector<uint8_t> pixelData = decodeBMP(bmpData, width, height);
+  if (pixelData.empty()) {
+    sendResponse(client, 500, "application/json", "{\"success\": false, \"message\": \"无法解码图片\"}");
+    return;
+  }
+
+  // 显示图片
+  if (displayImageOnEPD(pixelData, width, height)) {
+    sendResponse(client, 200, "application/json", "{\"success\": true, \"message\": \"图片刷新成功\"}");
+  } else {
+    sendResponse(client, 500, "application/json", "{\"success\": false, \"message\": \"无法显示图片\"}");
+  }
 }
 
 // 处理BLE蓝牙停止请求
