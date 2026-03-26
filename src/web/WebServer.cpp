@@ -761,6 +761,7 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
       html += "<li><strong>POST</strong> /display-image - 显示图片（需发送JSON: {\"url\": \"图片URL\"}）</li>";
       html += "<li><strong>POST</strong> /update-image-url - 更新图片地址（需发送JSON: {\"image_url\": \"图片URL\"}）</li>";
       html += "<li><strong>GET</strong> /refresh-image - 根据存储的image_url刷新图片显示</li>";
+      html += "<li><strong>POST</strong> /update-base-host - 更新BASE_HOST（需发送JSON: {\"base_host\": \"主机地址\"}）</li>";
       html += "<li><strong>GET</strong> /heartbeat - 心跳检测</li>";
       html += "<li><strong>GET</strong> /wifi - 获取WiFi信息</li>";
       html += "<li><strong>GET</strong> /resource - 获取设备资源信息</li>";
@@ -789,6 +790,10 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     // 处理刷新图片路径（GET方法）
     else if (path == "/refresh-image" && method == "GET") {
       handleRefreshImage(client);
+    }
+    // 处理更新BASE_HOST路径（POST方法）
+    else if (path == "/update-base-host" && method == "POST") {
+      handleUpdateBaseHost(client, request);
     }
     // 处理心跳检测路径（GET方法）
     else if (path == "/heartbeat" && method == "GET") {
@@ -924,6 +929,55 @@ void MyWebServer::handleRefreshImage(WiFiClient& client) {
   } else {
     sendResponse(client, 500, "application/json", "{\"success\": false, \"message\": \"无法显示图片\"}");
   }
+}
+
+// 处理更新BASE_HOST请求
+void MyWebServer::handleUpdateBaseHost(WiFiClient& client, const String& request) {
+  Serial.println("收到更新BASE_HOST请求");
+
+  // 解析请求体
+  int bodyIndex = request.indexOf("\r\n\r\n");
+  if (bodyIndex == -1) {
+    sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"无效的请求格式\"}");
+    return;
+  }
+
+  String body = request.substring(bodyIndex + 4);
+  Serial.printf("请求体长度: %d\n", body.length());
+
+  // 解析JSON数据
+  if (body.startsWith("{") && body.endsWith("}")) {
+    // 简单的JSON解析，寻找"base_host"字段
+    int hostStart = body.indexOf("\"base_host\"");
+    if (hostStart != -1) {
+      hostStart = body.indexOf(":", hostStart) + 1;
+
+      // 跳过空格
+      while (hostStart < body.length() && (body[hostStart] == ' ' || body[hostStart] == '\t')) {
+        hostStart++;
+      }
+
+      if (body[hostStart] == '"') {
+        hostStart++;
+        int hostEnd = body.indexOf("\"", hostStart);
+        if (hostEnd != -1) {
+          String baseHost = body.substring(hostStart, hostEnd);
+          Serial.printf("新BASE_HOST: %s\n", baseHost.c_str());
+
+          // 保存BASE_HOST到Flash存储
+          if (StorageComm.saveBaseHost(baseHost)) {
+            sendResponse(client, 200, "application/json", "{\"success\": true, \"message\": \"BASE_HOST更新成功\"}");
+          } else {
+            sendResponse(client, 500, "application/json", "{\"success\": false, \"message\": \"BASE_HOST保存失败\"}");
+          }
+
+          return;
+        }
+      }
+    }
+  }
+
+  sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"无法解析请求\"}");
 }
 
 // 处理BLE蓝牙停止请求

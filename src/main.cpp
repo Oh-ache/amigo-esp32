@@ -23,6 +23,17 @@ void setup() {
     Serial.println("存储管理初始化失败");
   }
 
+  // 初始化BASE_HOST：如果存储中没有或为空，写入默认值
+  String storedBaseHost;
+  if (!StorageComm.loadBaseHost(storedBaseHost) || storedBaseHost.isEmpty()) {
+    Serial.println("BASE_HOST未设置，写入默认值");
+#ifdef BASE_HOST
+    StorageComm.saveBaseHost(BASE_HOST);
+#else
+    StorageComm.saveBaseHost("https://amigo.blestgirl.top");
+#endif
+  }
+
   // 根据WiFi连接方式进行初始化
 #ifdef WIFI_CONNECT_MODE
   switch (WIFI_CONNECT_MODE) {

@@ -100,6 +100,9 @@ private:
 
   // 处理刷新图片显示请求（根据存储的image_url）
   void handleRefreshImage(WiFiClient& client);
+
+  // 处理更新BASE_HOST请求
+  void handleUpdateBaseHost(WiFiClient& client, const String& request);
 };
 
 extern MyWebServer WebComm;

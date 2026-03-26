@@ -25,6 +25,12 @@ public:
   bool clearImageUrl();
   bool hasImageUrl();
 
+  // BASE_HOST存储
+  bool saveBaseHost(const String& baseHost);
+  bool loadBaseHost(String& baseHost);
+  bool clearBaseHost();
+  bool hasBaseHost();
+
   // 获取所有存储信息（JSON格式）
   String getStorageInfo();
 
@@ -35,6 +41,7 @@ private:
   static const char* WIFI_SSID_KEY;
   static const char* WIFI_PASSWORD_KEY;
   static const char* IMAGE_URL_KEY;
+  static const char* BASE_HOST_KEY;
 };
 
 extern StorageManager StorageComm;

@@ -7,6 +7,7 @@ StorageManager StorageComm;
 const char* StorageManager::WIFI_SSID_KEY = "wifi_ssid";
 const char* StorageManager::WIFI_PASSWORD_KEY = "wifi_password";
 const char* StorageManager::IMAGE_URL_KEY = "image_url";
+const char* StorageManager::BASE_HOST_KEY = "base_host";
 
 // 构造函数
 StorageManager::StorageManager() {
@@ -117,6 +118,47 @@ bool StorageManager::hasImageUrl() {
   return !imageUrl.isEmpty();
 }
 
+// 保存BASE_HOST
+bool StorageManager::saveBaseHost(const String& baseHost) {
+  Serial.printf("正在保存BASE_HOST: %s\n", baseHost.c_str());
+
+  preferences.putString(BASE_HOST_KEY, baseHost);
+
+  Serial.println("BASE_HOST保存成功");
+  return true;
+}
+
+// 加载BASE_HOST
+bool StorageManager::loadBaseHost(String& baseHost) {
+  Serial.println("正在加载BASE_HOST");
+
+  baseHost = preferences.getString(BASE_HOST_KEY, "");
+
+  if (baseHost.isEmpty()) {
+    Serial.println("未找到BASE_HOST");
+    return false;
+  }
+
+  Serial.printf("BASE_HOST加载成功: %s\n", baseHost.c_str());
+  return true;
+}
+
+// 清除BASE_HOST
+bool StorageManager::clearBaseHost() {
+  Serial.println("正在清除BASE_HOST");
+
+  preferences.remove(BASE_HOST_KEY);
+
+  Serial.println("BASE_HOST清除成功");
+  return true;
+}
+
+// 检查是否有BASE_HOST
+bool StorageManager::hasBaseHost() {
+  String baseHost = preferences.getString(BASE_HOST_KEY, "");
+  return !baseHost.isEmpty();
+}
+
 // 获取所有存储信息（JSON格式）
 String StorageManager::getStorageInfo() {
   Serial.println("正在获取存储信息");
@@ -124,11 +166,13 @@ String StorageManager::getStorageInfo() {
   String ssid = preferences.getString(WIFI_SSID_KEY, "");
   String password = preferences.getString(WIFI_PASSWORD_KEY, "");
   String imageUrl = preferences.getString(IMAGE_URL_KEY, "");
+  String baseHost = preferences.getString(BASE_HOST_KEY, "");
 
   // 构建JSON响应
   String json = "{";
   json += "\"wifi\": {\"ssid\": \"" + ssid + "\", \"password\": \"" + password + "\"},";
-  json += "\"image_url\": \"" + imageUrl + "\"";
+  json += "\"image_url\": \"" + imageUrl + "\",";
+  json += "\"base_host\": \"" + baseHost + "\"";
   json += "}";
 
   Serial.printf("存储信息: %s\n", json.c_str());
