@@ -759,6 +759,7 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
       html += "<li><strong>GET</strong> / - 显示此页面</li>";
       html += "<li><strong>GET</strong> /device-id - 获取设备唯一ID</li>";
       html += "<li><strong>POST</strong> /display-image - 显示图片（需发送JSON: {\"url\": \"图片URL\"}）</li>";
+      html += "<li><strong>POST</strong> /update-image-url - 更新图片地址（需发送JSON: {\"image_url\": \"图片URL\"}）</li>";
       html += "<li><strong>GET</strong> /heartbeat - 心跳检测</li>";
       html += "<li><strong>GET</strong> /wifi - 获取WiFi信息</li>";
       html += "<li><strong>GET</strong> /resource - 获取设备资源信息</li>";
@@ -779,6 +780,10 @@ void MyWebServer::handleRequest(WiFiClient& client, const String& request) {
     // 处理图片显示路径（POST方法）
     else if (path == "/display-image" && method == "POST") {
       handleDisplayImage(client, request);
+    }
+    // 处理更新图片地址路径（POST方法）
+    else if (path == "/update-image-url" && method == "POST") {
+      handleUpdateImageUrl(client, request);
     }
     // 处理心跳检测路径（GET方法）
     else if (path == "/heartbeat" && method == "GET") {
@@ -829,6 +834,55 @@ void MyWebServer::handleBLEStart(WiFiClient& client) {
   // 返回成功响应
   String json = "{\"success\": true, \"message\": \"BLE蓝牙已启动\"}";
   sendResponse(client, 200, "application/json", json);
+}
+
+// 处理更新图片地址请求
+void MyWebServer::handleUpdateImageUrl(WiFiClient& client, const String& request) {
+  Serial.println("收到更新图片地址请求");
+
+  // 解析请求体
+  int bodyIndex = request.indexOf("\r\n\r\n");
+  if (bodyIndex == -1) {
+    sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"无效的请求格式\"}");
+    return;
+  }
+
+  String body = request.substring(bodyIndex + 4);
+  Serial.printf("请求体长度: %d\n", body.length());
+
+  // 解析JSON数据
+  if (body.startsWith("{") && body.endsWith("}")) {
+    // 简单的JSON解析，寻找"image_url"字段
+    int urlStart = body.indexOf("\"image_url\"");
+    if (urlStart != -1) {
+      urlStart = body.indexOf(":", urlStart) + 1;
+
+      // 跳过空格
+      while (urlStart < body.length() && (body[urlStart] == ' ' || body[urlStart] == '\t')) {
+        urlStart++;
+      }
+
+      if (body[urlStart] == '"') {
+        urlStart++;
+        int urlEnd = body.indexOf("\"", urlStart);
+        if (urlEnd != -1) {
+          String imageUrl = body.substring(urlStart, urlEnd);
+          Serial.printf("新图片URL: %s\n", imageUrl.c_str());
+
+          // 保存图片地址到Flash存储
+          if (StorageComm.saveImageUrl(imageUrl)) {
+            sendResponse(client, 200, "application/json", "{\"success\": true, \"message\": \"图片地址更新成功\"}");
+          } else {
+            sendResponse(client, 500, "application/json", "{\"success\": false, \"message\": \"图片地址保存失败\"}");
+          }
+
+          return;
+        }
+      }
+    }
+  }
+
+  sendResponse(client, 400, "application/json", "{\"success\": false, \"message\": \"无法解析请求\"}");
 }
 
 // 处理BLE蓝牙停止请求

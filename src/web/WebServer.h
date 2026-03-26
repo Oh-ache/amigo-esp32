@@ -94,6 +94,9 @@ private:
 
   // 处理BLE蓝牙停止请求
   void handleBLEStop(WiFiClient& client);
+
+  // 处理更新图片地址请求
+  void handleUpdateImageUrl(WiFiClient& client, const String& request);
 };
 
 extern MyWebServer WebComm;
